@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+*.log
+.DS_Store
+
+# aset sensitif (tanda tangan, logo, master) — jangan ikut ke repo
+1.png
+logo.png
+logo-hd.png
+sig-siti.png
+sig-monica.png
+ttd-siti.png
+ttd-monica.png
+ttd-siti.svg
+ttd-monica.svg

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Report Card — Cetta Japanese</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Playfair+Display:wght@800;900&family=Noto+Sans+JP:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green:#8DC63F;
+    --green-line:#9FCB50;
+    --green-light:#EAF3DC;
+    --ink:#111111;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#f0f0f0;font-family:'Poppins','Noto Sans JP',sans-serif;color:var(--ink);}
+  .page{
+    position:relative;width:800px;min-height:1318px;margin:20px auto;background:#fff;
+    padding:26px 48px 0;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.15);
+  }
+  /* ===== Ornamen awan seigaiha ===== */
+  .cloud-tl,.cloud-tr{position:absolute;top:0;pointer-events:none;}
+  .cloud-tl{left:0;}
+  .cloud-tr{right:0;}
+  /* ===== Logo ===== */
+  .logo-wrap{position:relative;text-align:center;z-index:2;}
+  .logo{
+    width:142px;height:142px;border-radius:50%;
+    background:#fff;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;
+  }
+  .logo img{width:100%;height:100%;object-fit:contain;}
+  .logo .logo-fallback{font-weight:700;font-size:14px;color:#999;display:none;}
+  /* ===== Judul ===== */
+  h1{
+    font-family:'Playfair Display',Georgia,serif;font-weight:900;
+    font-size:64px;letter-spacing:2px;text-align:center;margin-top:12px;line-height:1.05;
+  }
+  .subtitle{font-family:'Noto Sans JP',sans-serif;font-weight:700;font-size:30px;text-align:center;margin-bottom:14px;}
+  .rule{height:5px;background:var(--green);border-radius:3px;margin-bottom:16px;}
+  /* ===== Data murid ===== */
+  .student{font-size:19px;margin-bottom:18px;line-height:1.7;}
+  .student .row{display:flex;}
+  .student .lbl{width:150px;}
+  .student .colon{width:22px;}
+  .student b{font-weight:700;}
+  /* ===== Placeholder editable ===== */
+  [contenteditable]{outline:none;min-width:30px;display:inline-block;}
+  [contenteditable]:empty::before{content:attr(data-ph);color:#b5b5b5;font-weight:500;}
+  /* ===== Tabel nilai ===== */
+  .thead{display:flex;gap:14px;margin-bottom:10px;}
+  .th{background:var(--green);border-radius:8px;font-weight:800;font-size:19px;padding:10px 22px;}
+  .th.title{flex:1;}
+  .th.score{width:160px;text-align:center;}
+  .trow{display:flex;gap:14px;margin-bottom:10px;}
+  .td{background:var(--green-light);border-radius:8px;padding:13px 22px;font-size:19px;}
+  .td.label{flex:1;font-weight:700;}
+  .td.label .jp{font-family:'Noto Sans JP',sans-serif;font-weight:700;}
+  .td.value{width:160px;text-align:center;font-weight:800;font-size:22px;}
+  /* ===== Grade & Notes ===== */
+  .bottom{display:flex;gap:16px;margin-top:22px;}
+  .col-grade{width:200px;}
+  .col-notes{flex:1;display:flex;flex-direction:column;}
+  .pill{background:var(--green);border-radius:8px;text-align:center;font-weight:800;font-size:19px;padding:9px 0;margin-bottom:10px;}
+  .grade-box{background:var(--green-light);border-radius:8px;padding:14px 18px;font-size:18px;line-height:1.85;}
+  .grade-box .g{display:flex;}
+  .grade-box .g b{width:44px;font-weight:800;}
+  .notes-box{
+    background:var(--green-light);border-radius:8px;padding:14px 18px;font-size:14.5px;
+    line-height:1.55;text-align:justify;flex:1;min-height:150px;
+  }
+  .final{
+    background:var(--green);border-radius:8px;text-align:center;font-weight:800;
+    font-size:22px;padding:10px 0;margin-top:10px;
+  }
+  .final span{font-weight:800;}
+  /* ===== Tanda tangan ===== */
+  .signs{display:flex;justify-content:space-around;align-items:flex-end;margin-top:26px;}
+  .sign{width:300px;text-align:center;}
+  .sign img{width:100%;object-fit:contain;}
+  /* ===== Footer ===== */
+  .footer{
+    background:var(--green);margin:28px -48px 0;padding:14px 0;text-align:center;
+    font-weight:800;font-size:24px;
+  }
+  @media print{
+    body{background:#fff;}
+    .page{margin:0;box-shadow:none;width:auto;}
+    @page{size:A4 portrait;margin:0;}
+    [contenteditable]:empty::before{content:"";}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Awan seigaiha kiri atas -->
+  <svg class="cloud-tl" width="300" height="150" viewBox="0 0 300 150">
+    <defs>
+      <g id="cl" fill="none" stroke="#9FCB50" stroke-width="3">
+        <circle cx="0" cy="0" r="34" fill="#fff"/>
+        <circle cx="0" cy="0" r="25"/><circle cx="0" cy="0" r="16"/><circle cx="0" cy="0" r="7"/>
+      </g>
+    </defs>
+    <use href="#cl" x="10" y="-6"/><use href="#cl" x="78" y="-14"/><use href="#cl" x="146" y="-8"/>
+    <use href="#cl" x="-12" y="52"/><use href="#cl" x="52" y="44"/><use href="#cl" x="118" y="50"/>
+    <use href="#cl" x="18" y="104"/><use href="#cl" x="84" y="100"/>
+  </svg>
+  <!-- Awan seigaiha kanan atas -->
+  <svg class="cloud-tr" width="260" height="130" viewBox="0 0 260 130">
+    <use href="#cl" x="120" y="-10"/><use href="#cl" x="188" y="-4"/><use href="#cl" x="252" y="-14"/>
+    <use href="#cl" x="152" y="46"/><use href="#cl" x="218" y="42"/>
+    <use href="#cl" x="250" y="96"/>
+  </svg>
+
+  <!-- Logo -->
+  <div class="logo-wrap">
+    <div class="logo">
+      <img src="logo-hd.png" alt="Cetta Japanese" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+      <div class="logo-fallback">CETTA<br>JAPANESE</div>
+    </div>
+  </div>
+
+  <h1>REPORT CARD</h1>
+  <div class="subtitle">(成績表)</div>
+  <div class="rule"></div>
+
+  <!-- Data murid -->
+  <div class="student">
+    <div class="row"><span class="lbl">Student Name</span><span class="colon">:</span><b contenteditable data-ph="NAMA MURID"></b></div>
+    <div class="row"><span class="lbl">Level</span><span class="colon">:</span><b contenteditable data-ph="Chuukyuu （ 中級 ）"></b></div>
+    <div class="row"><span class="lbl">Tutor</span><span class="colon">:</span><b contenteditable data-ph="Nama Tutor"></b></div>
+  </div>
+
+  <!-- Tabel nilai -->
+  <div class="thead">
+    <div class="th title">TITLE</div>
+    <div class="th score">SCORE</div>
+  </div>
+  <div class="trow"><div class="td label">Attendance <span class="jp">（出席）</span></div><div class="td value" contenteditable data-ph="—"></div></div>
+  <div class="trow"><div class="td label">In class participation <span class="jp">（積極性）</span></div><div class="td value" contenteditable data-ph="—"></div></div>
+  <div class="trow"><div class="td label">Grammar <span class="jp">（文法）</span></div><div class="td value" contenteditable data-ph="—"></div></div>
+  <div class="trow"><div class="td label">Kanji <span class="jp">（漢字）</span></div><div class="td value" contenteditable data-ph="—"></div></div>
+  <div class="trow"><div class="td label">Test <span class="jp">（試験）</span></div><div class="td value" contenteditable data-ph="—"></div></div>
+  <div class="trow"><div class="td label">Speaking <span class="jp">（会話）</span></div><div class="td value" contenteditable data-ph="—"></div></div>
+
+  <!-- Grade & Notes -->
+  <div class="bottom">
+    <div class="col-grade">
+      <div class="pill">GRADE</div>
+      <div class="grade-box">
+        <div class="g"><b>A</b> = 91-100</div>
+        <div class="g"><b>A-</b> = 81-90</div>
+        <div class="g"><b>B+</b> = 71-80</div>
+        <div class="g"><b>B</b> = 61-70</div>
+        <div class="g"><b>B-</b> = 51-60</div>
+        <div class="g"><b>C</b> = &le;50</div>
+      </div>
+    </div>
+    <div class="col-notes">
+      <div class="pill">NOTES</div>
+      <div class="notes-box" contenteditable data-ph="Tulis catatan untuk murid di sini..."></div>
+      <div class="final">FINAL SCORE :&nbsp;&nbsp;<span contenteditable data-ph="—"></span></div>
+    </div>
+  </div>
+
+  <!-- Tanda tangan -->
+  <div class="signs">
+    <div class="sign"><img src="ttd-siti.svg" alt="Head of Cetta Japanese — Siti Mutmainah"></div>
+    <div class="sign"><img src="ttd-monica.svg" alt="Chief Operating Officer — Monica Milan"></div>
+  </div>
+
+  <div class="footer">CETTA JAPANESE</div>
+</div>
+</body>
+</html>

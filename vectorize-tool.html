@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Vectorize Tanda Tangan — Cetta Japanese</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/imagetracerjs/1.2.6/imagetracer_v1.2.6.min.js"
+        onerror="var s=document.createElement('script');s.src='https://unpkg.com/imagetracerjs@1.2.6/imagetracer_v1.2.6.js';document.head.appendChild(s)"></script>
+<style>
+  body{font-family:-apple-system,'Segoe UI',sans-serif;max-width:900px;margin:30px auto;padding:0 20px;color:#222;}
+  h1{font-size:22px;}
+  .drop{border:3px dashed #8DC63F;border-radius:12px;padding:40px;text-align:center;font-size:17px;
+        color:#555;background:#F4FAEA;cursor:pointer;margin:20px 0;}
+  .drop.over{background:#E4F2CC;}
+  .result{display:flex;gap:20px;flex-wrap:wrap;margin-top:20px;}
+  .card{border:1px solid #ddd;border-radius:10px;padding:14px;width:400px;}
+  .card h3{margin:0 0 8px;font-size:15px;}
+  .preview{border:1px solid #eee;background:#fff;max-height:260px;overflow:auto;}
+  .preview svg{width:100%;height:auto;display:block;}
+  a.btn{display:inline-block;margin-top:10px;background:#8DC63F;color:#111;font-weight:700;
+        padding:9px 18px;border-radius:8px;text-decoration:none;}
+  .note{color:#777;font-size:13.5px;line-height:1.5;}
+</style>
+</head>
+<body>
+<h1>Vectorize Tanda Tangan → SVG</h1>
+<p class="note">Seret file <b>ttd-siti.png</b> dan <b>ttd-monica.png</b> (boleh sekaligus) ke kotak di bawah, atau klik untuk memilih file. Hasilnya SVG tajam yang bisa diunduh.</p>
+<div class="drop" id="drop">Seret PNG ke sini, atau klik untuk pilih file</div>
+<input type="file" id="file" accept="image/png,image/jpeg" multiple style="display:none">
+<div class="result" id="result"></div>
+
+<script>
+const drop=document.getElementById('drop'), input=document.getElementById('file'), result=document.getElementById('result');
+drop.onclick=()=>input.click();
+drop.ondragover=e=>{e.preventDefault();drop.classList.add('over');};
+drop.ondragleave=()=>drop.classList.remove('over');
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');handle(e.dataTransfer.files);};
+input.onchange=()=>handle(input.files);
+
+function handle(files){[...files].forEach(f=>{
+  const img=new Image();
+  img.onload=()=>process(img,f.name.replace(/\.(png|jpe?g)$/i,''));
+  img.src=URL.createObjectURL(f);
+});}
+
+function process(img,name){
+  const scale=3;
+  const c=document.createElement('canvas');
+  c.width=img.naturalWidth*scale; c.height=img.naturalHeight*scale;
+  const ctx=c.getContext('2d');
+  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+  ctx.drawImage(img,0,0,c.width,c.height);
+  const d=ctx.getImageData(0,0,c.width,c.height), p=d.data;
+  // Threshold: hitam pekat / putih bersih
+  for(let i=0;i<p.length;i+=4){
+    const v=(p[i]+p[i+1]+p[i+2])/3;
+    const black=v<170;
+    p[i]=p[i+1]=p[i+2]=black?0:255; p[i+3]=255;
+  }
+  const opts={
+    pal:[{r:0,g:0,b:0,a:255},{r:255,g:255,b:255,a:255}],
+    numberofcolors:2, colorsampling:0, blurradius:0,
+    ltres:0.4, qtres:0.4, pathomit:20, rightangleenhance:false,
+    strokewidth:0, roundcoords:2, linefilter:true, viewbox:true
+  };
+  let svg=ImageTracer.imagedataToSVG(d,opts);
+  // Buang layer putih agar background transparan
+  svg=svg.replace(/<path[^>]*fill="rgb\(255,255,255\)"[^>]*\/>/g,'');
+  const card=document.createElement('div'); card.className='card';
+  card.innerHTML='<h3>'+name+'.svg</h3><div class="preview">'+svg+'</div>';
+  const a=document.createElement('a'); a.className='btn'; a.textContent='Unduh '+name+'.svg';
+  a.href=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'})); a.download=name+'.svg';
+  card.appendChild(a); result.appendChild(card);
+}
+</script>
+</body>
+</html>

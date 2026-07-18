@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --leaf: #8cc63f;
+  --leaf-dark: #4e7a1e;
+  --leaf-soft: #e8f3d3;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background: #f6f8f1;
+  color: #1c1c1c;
+  font-family: "Poppins", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* subtle scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #c9d9ab;
+  border-radius: 999px;
+}
