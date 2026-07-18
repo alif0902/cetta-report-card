@@ -4,13 +4,12 @@ out
 *.log
 .DS_Store
 
-# aset sensitif (tanda tangan, logo, master) — jangan ikut ke repo
+# file kerja lokal — tidak dibutuhkan aplikasi
 1.png
 logo.png
-logo-hd.png
-sig-siti.png
-sig-monica.png
 ttd-siti.png
 ttd-monica.png
 ttd-siti.svg
 ttd-monica.svg
+vectorize-tool.html
+report-card-template.html
