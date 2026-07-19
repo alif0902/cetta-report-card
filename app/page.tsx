@@ -44,19 +44,42 @@ const DEFAULT_BRAND: Brand = {
 const SCORE_FIELDS: {
   key: ScoreKey;
   label: string;
+  info: string;
   raw?: boolean;
   att?: boolean;
 }[] = [
   {
     key: "attendance",
-    label: `Attendance \u51fa\u5e2d \u00b7 hadir dari ${ATTENDANCE_TOTAL} pertemuan`,
+    label: "Attendance \u51fa\u5e2d",
+    info: `Diisi jumlah pertemuan yang dihadiri murid dari total ${ATTENDANCE_TOTAL}. Otomatis menjadi grade: 12 = A+, 11 = A, 10 = A-, 9 = B+, 8 = B, 7 = B-, 6 ke bawah = C.`,
     att: true,
   },
-  { key: "participation", label: "Participation \u7a4d\u6975\u6027" },
-  { key: "grammar", label: "Grammar \u6587\u6cd5" },
-  { key: "kanji", label: "Kanji \u6f22\u5b57" },
-  { key: "test", label: "Test \u8a66\u9a13", raw: true },
-  { key: "speaking", label: "Speaking \u4f1a\u8a71" },
+  {
+    key: "participation",
+    label: "Participation \u7a4d\u6975\u6027",
+    info: "Keaktifan murid di kelas, 0-100 (penilaian subjektif tutor). Di kartu tampil sebagai grade.",
+  },
+  {
+    key: "grammar",
+    label: "Grammar \u6587\u6cd5",
+    info: "Pemahaman tata bahasa, 0-100. Di kartu tampil sebagai grade.",
+  },
+  {
+    key: "kanji",
+    label: "Kanji \u6f22\u5b57",
+    info: "Penguasaan kanji, 0-100. Di kartu tampil sebagai grade.",
+  },
+  {
+    key: "test",
+    label: "Test \u8a66\u9a13",
+    info: "Nilai ujian, 0-100. Di kartu tampil sebagai angka apa adanya, bukan grade.",
+    raw: true,
+  },
+  {
+    key: "speaking",
+    label: "Speaking \u4f1a\u8a71",
+    info: "Kemampuan berbicara, 0-100. Di kartu tampil sebagai grade.",
+  },
 ];
 
 const emptyReport = (): ReportData => ({
@@ -78,10 +101,21 @@ export default function Home() {
   const [ready, setReady] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [busy, setBusy] = useState<null | "png" | "pdf">(null);
+  const [openInfo, setOpenInfo] = useState<ScoreKey | null>(null);
+
+  // tutup popover info saat klik di luar
+  useEffect(() => {
+    if (!openInfo) return;
+    const close = () => setOpenInfo(null);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [openInfo]);
 
   const exportRefs = useRef<(HTMLDivElement | null)[]>([]);
   const previewWrap = useRef<HTMLDivElement>(null);
+  const cardInner = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const [cardH, setCardH] = useState(0);
 
   // load brand from localStorage
   useEffect(() => {
@@ -139,6 +173,17 @@ export default function Home() {
       const w = el.clientWidth;
       setScale(Math.min(1, w / 720));
     };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ready]);
+
+  // ukur tinggi asli kartu agar tinggi preview mengikuti skala (tanpa ruang kosong)
+  useEffect(() => {
+    const el = cardInner.current;
+    if (!el) return;
+    const update = () => setCardH(el.offsetHeight);
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
@@ -282,7 +327,7 @@ export default function Home() {
         <div className="absolute inset-x-0 top-0 opacity-40">
           <Seigaiha height={40} />
         </div>
-        <div className="relative mx-auto max-w-6xl px-5 py-5 flex items-center justify-between">
+        <div className="relative mx-auto max-w-6xl px-5 py-4 sm:py-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-ink">
               Report Card Generator
@@ -291,7 +336,7 @@ export default function Home() {
               {"Cetta Japanese \u2014 isi nilai, langsung jadi kartu."}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => download("png")}
               disabled={busy !== null}
@@ -318,7 +363,7 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-5 py-6 grid gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
+      <div className="mx-auto max-w-6xl px-5 py-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
         {/* form */}
         <section className="space-y-5">
           <Card title="Murid">
@@ -406,9 +451,32 @@ export default function Home() {
                     key={f.key}
                     className="grid grid-cols-[minmax(0,1fr)_6rem_2.5rem] items-center gap-3"
                   >
-                    <label className="text-sm text-neutral-700">
+                    <span className="relative text-sm text-neutral-700">
                       {f.label}
-                    </label>
+                      <button
+                        type="button"
+                        aria-label={`Info ${f.label}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenInfo(openInfo === f.key ? null : f.key);
+                        }}
+                        className={`ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full border align-middle text-[10px] font-bold ${
+                          openInfo === f.key
+                            ? "border-leaf bg-leafsoft text-leafdark"
+                            : "border-neutral-300 text-neutral-400 hover:border-leaf hover:text-leafdark"
+                        }`}
+                      >
+                        i
+                      </button>
+                      {openInfo === f.key ? (
+                        <span
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute left-0 top-full z-10 mt-1.5 block w-64 max-w-[75vw] rounded-lg bg-white p-2.5 text-xs leading-relaxed text-neutral-600 shadow-lg ring-1 ring-[#dde5cd]"
+                        >
+                          {f.info}
+                        </span>
+                      ) : null}
+                    </span>
                     <input
                       type="number"
                       min={0}
@@ -542,10 +610,12 @@ export default function Home() {
               <div
                 style={{
                   width: 720 * scale,
-                  height: "auto",
+                  height: cardH ? cardH * scale : "auto",
+                  overflow: "hidden",
                 }}
               >
                 <div
+                  ref={cardInner}
                   style={{
                     transform: `scale(${scale})`,
                     transformOrigin: "top left",
@@ -582,10 +652,16 @@ export default function Home() {
           width: 100%;
           border: 1px solid #d8ddcd;
           border-radius: 8px;
-          padding: 8px 10px;
-          font-size: 14px;
+          padding: 10px 10px;
+          font-size: 16px; /* >=16px agar iOS tidak auto-zoom saat fokus */
           outline: none;
           background: #fff;
+        }
+        @media (min-width: 1024px) {
+          .inp {
+            padding: 8px 10px;
+            font-size: 14px;
+          }
         }
         .inp:focus {
           border-color: #8cc63f;
