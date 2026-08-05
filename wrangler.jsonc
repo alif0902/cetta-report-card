@@ -1,0 +1,12 @@
+{
+  // Konfigurasi Cloudflare Workers untuk menyajikan hasil static export.
+  // Tidak ada kode Worker sama sekali — Cloudflare hanya menyajikan isi out/.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cetta-report-card",
+  "compatibility_date": "2026-08-05",
+  "assets": {
+    "directory": "./out",
+    // File tidak ditemukan -> tampilkan halaman utama.
+    "not_found_handling": "single-page-application"
+  }
+}

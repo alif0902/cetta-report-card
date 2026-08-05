@@ -4,6 +4,8 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Cetta Report Card Generator",
   description: "Buat report card Cetta Japanese otomatis dari nilai.",
+  // Alat internal — jangan sampai muncul di hasil pencarian.
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({
