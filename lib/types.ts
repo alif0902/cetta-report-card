@@ -6,15 +6,28 @@ export type ScoreKey =
   | "grammar"
   | "kanji"
   | "test"
-  | "speaking";
+  | "speaking"
+  // khusus kelas Kaiwa
+  | "fluency"
+  | "vocabulary"
+  | "pronunciation";
 
 export type Scores = Record<ScoreKey, string>;
 
+/** Satu kolom di blok Final Test: label diketik tutor, nilai berupa angka. */
+export type ExtraCell = { label: string; score: string };
+
+/** Isi blok Final Test per murid, dikunci dengan id blok dari template. */
+export type ExtraBlocks = Record<string, ExtraCell[]>;
+
 export type ReportData = {
+  templateId: string;
   studentName: string;
   level: string;
   tutor: string;
   scores: Scores;
+  /** Isi blok Final Test / Kanji Test / dsb. Kosong kalau template tak punya. */
+  extras: ExtraBlocks;
   notes: string;
   finalOverride: string;
 };
@@ -29,5 +42,35 @@ export type Brand = {
   cooSig: string | null;
   defaultLevel: string;
   defaultTutor: string;
+  /** Skala nilai lama; dipakai sebagai skala template default. */
   bands: Band[];
+  /** Skala nilai per template; menimpa skala bawaan template bila ada. */
+  bandsByTemplate?: Record<string, Band[]>;
+};
+
+/** Warna & gaya visual sebuah template. */
+export type Theme = {
+  accent: string;
+  soft: string;
+  /** Warna teks di atas blok accent (header tabel, GRADE/NOTES, final score). */
+  onAccent: string;
+  /** Warna teks di footer; di master Canva sering beda dari onAccent. */
+  onFooter: string;
+  ink: string;
+  /** Sudut bawah footer dibulatkan, seperti template Elementary. */
+  roundedFooter: boolean;
+};
+
+/** Satu baris nilai yang ditampilkan di kartu. */
+export type TemplateRow = {
+  key: ScoreKey;
+  en: string;
+  jp: string;
+  /** Tampilkan angka mentah, bukan huruf grade (mis. Test). */
+  raw?: boolean;
+};
+
+export type CardProps = {
+  data: ReportData;
+  brand: Brand;
 };

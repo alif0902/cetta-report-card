@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReportCard from "@/components/ReportCard";
 import Seigaiha from "@/components/Seigaiha";
-import { Band, Brand, ReportData, ScoreKey } from "@/lib/types";
+import { Band, Brand, ExtraCell, ReportData, ScoreKey } from "@/lib/types";
 import {
   ATTENDANCE_TOTAL,
   attendanceGrade,
@@ -11,6 +11,15 @@ import {
   parseScore,
   scoreToGrade,
 } from "@/lib/grades";
+import {
+  bandsFor,
+  DEFAULT_LEVELS,
+  DEFAULT_TEMPLATE_ID,
+  defaultExtras,
+  extrasFor,
+  getTemplate,
+  templateGroups,
+} from "@/lib/templates";
 import logoHd from "@/logo-hd.png";
 import sigSiti from "@/sig-siti.png";
 import sigMonica from "@/sig-monica.png";
@@ -26,6 +35,9 @@ const emptyScores = {
   kanji: "",
   test: "",
   speaking: "",
+  fluency: "",
+  vocabulary: "",
+  pronunciation: "",
 };
 
 const DEFAULT_BRAND: Brand = {
@@ -41,52 +53,43 @@ const DEFAULT_BRAND: Brand = {
   bands: DEFAULT_BANDS,
 };
 
-const SCORE_FIELDS: {
-  key: ScoreKey;
-  label: string;
-  info: string;
-  raw?: boolean;
-  att?: boolean;
-}[] = [
-  {
-    key: "attendance",
-    label: "Attendance \u51fa\u5e2d",
-    info: `Diisi jumlah pertemuan yang dihadiri murid dari total ${ATTENDANCE_TOTAL}. Otomatis menjadi grade: 12 = A+, 11 = A, 10 = A-, 9 = B+, 8 = B, 7 = B-, 6 ke bawah = C.`,
-    att: true,
-  },
-  {
-    key: "participation",
-    label: "Participation \u7a4d\u6975\u6027",
-    info: "Keaktifan murid di kelas, 0-100 (penilaian subjektif tutor). Di kartu tampil sebagai grade.",
-  },
-  {
-    key: "grammar",
-    label: "Grammar \u6587\u6cd5",
-    info: "Pemahaman tata bahasa, 0-100. Di kartu tampil sebagai grade.",
-  },
-  {
-    key: "kanji",
-    label: "Kanji \u6f22\u5b57",
-    info: "Penguasaan kanji, 0-100. Di kartu tampil sebagai grade.",
-  },
-  {
-    key: "test",
-    label: "Test \u8a66\u9a13",
-    info: "Nilai ujian, 0-100. Di kartu tampil sebagai angka apa adanya, bukan grade.",
-    raw: true,
-  },
-  {
-    key: "speaking",
-    label: "Speaking \u4f1a\u8a71",
-    info: "Kemampuan berbicara, 0-100. Di kartu tampil sebagai grade.",
-  },
-];
+// Label pendek & penjelasan tiap kategori. Baris mana yang tampil
+// ditentukan oleh template yang dipilih murid.
+const SCORE_LABELS: Record<ScoreKey, string> = {
+  attendance: "Attendance \u51fa\u5e2d",
+  participation: "Participation \u7a4d\u6975\u6027",
+  grammar: "Grammar \u6587\u6cd5",
+  kanji: "Kanji \u6f22\u5b57",
+  test: "Test \u8a66\u9a13",
+  speaking: "Speaking \u4f1a\u8a71",
+  fluency: "Fluency \u6d41\u66a2\u6027",
+  vocabulary: "Vocabulary \u8a00\u8449",
+  pronunciation: "Pronunciation \u767a\u97f3",
+};
 
-const emptyReport = (): ReportData => ({
+const SCORE_INFO: Record<ScoreKey, string> = {
+  attendance: `Diisi jumlah pertemuan yang dihadiri murid dari total ${ATTENDANCE_TOTAL}. Tiap pertemuan yang terlewat menurunkan satu tingkat pada skala nilai template ini.`,
+  participation:
+    "Keaktifan murid di kelas, 0-100 (penilaian subjektif tutor). Di kartu tampil sebagai grade.",
+  grammar: "Pemahaman tata bahasa, 0-100. Di kartu tampil sebagai grade.",
+  kanji: "Penguasaan kanji, 0-100. Di kartu tampil sebagai grade.",
+  test: "Nilai ujian, 0-100. Di kartu tampil sebagai angka apa adanya, bukan grade.",
+  speaking: "Kemampuan berbicara, 0-100. Di kartu tampil sebagai grade.",
+  fluency:
+    "Kelancaran & keruntutan bicara, 0-100. Khusus kelas Kaiwa. Di kartu tampil sebagai grade.",
+  vocabulary:
+    "Penguasaan kosakata, 0-100. Khusus kelas Kaiwa. Di kartu tampil sebagai grade.",
+  pronunciation:
+    "Pelafalan, 0-100. Khusus kelas Kaiwa. Di kartu tampil sebagai grade.",
+};
+
+const emptyReport = (templateId = DEFAULT_TEMPLATE_ID): ReportData => ({
+  templateId,
   studentName: "",
-  level: "",
+  level: getTemplate(templateId).defaultLevel,
   tutor: "",
   scores: { ...emptyScores },
+  extras: defaultExtras(templateId),
   notes: "",
   finalOverride: "",
 });
@@ -102,6 +105,11 @@ export default function Home() {
   const [showSettings, setShowSettings] = useState(false);
   const [busy, setBusy] = useState<null | "png" | "pdf">(null);
   const [openInfo, setOpenInfo] = useState<ScoreKey | null>(null);
+
+  // template aktif untuk murid yang sedang dibuka
+  const template = getTemplate(report?.templateId);
+  const bands = bandsFor(brand, template.id);
+  const extras = extrasFor(report?.extras, template.id);
 
   // tutup popover info saat klik di luar
   useEffect(() => {
@@ -128,7 +136,12 @@ export default function Home() {
             ([, v]) => v !== null && v !== undefined
           )
         ) as Partial<Brand>;
-        setBrand({ ...DEFAULT_BRAND, ...stored });
+        const merged = { ...DEFAULT_BRAND, ...stored };
+        // migrasi: skala nilai lama menjadi skala template default
+        if (!merged.bandsByTemplate) {
+          merged.bandsByTemplate = { [DEFAULT_TEMPLATE_ID]: merged.bands };
+        }
+        setBrand(merged);
       }
     } catch {}
     try {
@@ -140,7 +153,10 @@ export default function Home() {
             parsed.map((s) => ({
               ...emptyReport(),
               ...s,
+              // data lama belum punya templateId / extras
+              templateId: getTemplate(s?.templateId).id,
               scores: { ...emptyScores, ...(s?.scores || {}) },
+              extras: extrasFor(s?.extras, getTemplate(s?.templateId).id),
             }))
           );
         }
@@ -192,6 +208,25 @@ export default function Home() {
 
   const setScore = (k: ScoreKey, v: string) =>
     setReport((r) => ({ ...r, scores: { ...r.scores, [k]: v } }));
+
+  // --- blok Final Test ---
+  const setBlock = (blockId: string, fn: (cells: ExtraCell[]) => ExtraCell[]) =>
+    setReport((r) => {
+      const current = extrasFor(r.extras, r.templateId);
+      return {
+        ...r,
+        extras: { ...current, [blockId]: fn(current[blockId] ?? []) },
+      };
+    });
+
+  const setCell = (blockId: string, i: number, patch: Partial<ExtraCell>) =>
+    setBlock(blockId, (cells) =>
+      cells.map((c, idx) => (idx === i ? { ...c, ...patch } : c))
+    );
+  const addCell = (blockId: string) =>
+    setBlock(blockId, (cells) => [...cells, { label: "", score: "" }]);
+  const removeCell = (blockId: string, i: number) =>
+    setBlock(blockId, (cells) => cells.filter((_, idx) => idx !== i));
 
   const readImage = (file: File): Promise<string> =>
     new Promise((res, rej) => {
@@ -288,7 +323,8 @@ export default function Home() {
   );
 
   const addStudent = () => {
-    setStudents((list) => [...list, emptyReport()]);
+    // murid baru ikut template murid yang sedang dibuka
+    setStudents((list) => [...list, emptyReport(template.id)]);
     setActive(students.length); // panjang sebelum penambahan = index murid baru
   };
 
@@ -299,24 +335,35 @@ export default function Home() {
   };
 
   const resetStudent = () =>
-    setReport((r) => ({
-      studentName: "",
-      level: "",
-      tutor: "",
-      scores: { ...emptyScores },
-      notes: "",
-      finalOverride: "",
-    }));
+    setReport((r) => emptyReport(r.templateId));
+
+  // skala nilai diedit per template, tersimpan di brand.bandsByTemplate
+  const setBands = (fn: (list: Band[]) => Band[]) =>
+    setBrand((b) => {
+      const current = bandsFor(b, template.id);
+      const next = fn(current);
+      return {
+        ...b,
+        bands: template.id === DEFAULT_TEMPLATE_ID ? next : b.bands,
+        bandsByTemplate: { ...(b.bandsByTemplate || {}), [template.id]: next },
+      };
+    });
 
   const updateBand = (i: number, patch: Partial<Band>) =>
-    setBrand((b) => {
-      const bands = b.bands.map((x, idx) => (idx === i ? { ...x, ...patch } : x));
-      return { ...b, bands };
-    });
-  const addBand = () =>
-    setBrand((b) => ({ ...b, bands: [...b.bands, { min: 0, grade: "" }] }));
+    setBands((list) => list.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
+  const addBand = () => setBands((list) => [...list, { min: 0, grade: "" }]);
   const removeBand = (i: number) =>
-    setBrand((b) => ({ ...b, bands: b.bands.filter((_, idx) => idx !== i) }));
+    setBands((list) => list.filter((_, idx) => idx !== i));
+  const resetBands = () =>
+    setBrand((b) => {
+      const rest = { ...(b.bandsByTemplate || {}) };
+      delete rest[template.id];
+      return {
+        ...b,
+        bands: template.id === DEFAULT_TEMPLATE_ID ? DEFAULT_BANDS : b.bands,
+        bandsByTemplate: rest,
+      };
+    });
 
   if (!ready) return null;
 
@@ -377,7 +424,17 @@ export default function Home() {
                       : "border-neutral-300 text-neutral-600 hover:bg-neutral-100"
                   }`}
                 >
-                  <button onClick={() => setActive(i)}>
+                  <button
+                    onClick={() => setActive(i)}
+                    className="flex items-center gap-1.5"
+                    title={getTemplate(s.templateId).name}
+                  >
+                    <span
+                      className="inline-block h-2 w-2 shrink-0 rounded-full"
+                      style={{
+                        background: getTemplate(s.templateId).theme.accent,
+                      }}
+                    />
                     {s.studentName.trim() || `Murid ${i + 1}`}
                   </button>
                   {students.length > 1 ? (
@@ -400,6 +457,43 @@ export default function Home() {
             </div>
           </Card>
 
+          <Card title="Template">
+            <Field label="Desain kartu" hint="bisa beda tiap murid">
+              <select
+                className="inp"
+                value={template.id}
+                onChange={(e) => {
+                  const next = getTemplate(e.target.value);
+                  setReport((r) => ({
+                    ...r,
+                    templateId: next.id,
+                    // Level ikut berubah, kecuali tutor sudah mengetik sendiri
+                    level:
+                      r.level.trim() === "" ||
+                      DEFAULT_LEVELS.includes(r.level.trim())
+                        ? next.defaultLevel
+                        : r.level,
+                    // label blok Final Test ikut template baru
+                    extras: defaultExtras(next.id),
+                  }));
+                }}
+              >
+                {templateGroups().map((g) => (
+                  <optgroup key={g.group} label={g.group}>
+                    {g.items.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </Field>
+            <p className="-mt-1 text-xs leading-relaxed text-neutral-500">
+              {template.description}
+            </p>
+          </Card>
+
           <Card title="Data murid">
             <Field label="Student Name">
               <input
@@ -412,14 +506,14 @@ export default function Home() {
               />
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Level" hint="kosong = default">
+              <Field label="Level" hint="ikut template, boleh diubah">
                 <input
                   className="inp"
                   value={report.level}
                   onChange={(e) =>
                     setReport((r) => ({ ...r, level: e.target.value }))
                   }
-                  placeholder={brand.defaultLevel}
+                  placeholder={template.defaultLevel}
                 />
               </Field>
               <Field label="Tutor" hint="kosong = default">
@@ -436,26 +530,33 @@ export default function Home() {
           </Card>
 
           <Card title={"Nilai"}>
+            {template.rows.length === 0 ? (
+              <p className="mb-3 text-xs leading-relaxed text-neutral-500">
+                Template <b>{template.name}</b> tidak punya tabel skill —
+                nilainya diisi di blok di bawah.
+              </p>
+            ) : null}
             <div className="space-y-2">
-              {SCORE_FIELDS.map((f) => {
+              {template.rows.map((f) => {
+                const att = f.key === "attendance";
                 const n = parseScore(report.scores[f.key]);
-                const preview = f.att
-                  ? attendanceGrade(n) || "\u2014"
+                const preview = att
+                  ? attendanceGrade(n, bands) || "\u2014"
                   : f.raw
                   ? n === null
                     ? "\u2014"
                     : String(n)
-                  : scoreToGrade(n, brand.bands) || "\u2014";
+                  : scoreToGrade(n, bands) || "\u2014";
                 return (
                   <div
                     key={f.key}
                     className="grid grid-cols-[minmax(0,1fr)_6rem_2.5rem] items-center gap-3"
                   >
                     <span className="relative text-sm text-neutral-700">
-                      {f.label}
+                      {SCORE_LABELS[f.key]}
                       <button
                         type="button"
-                        aria-label={`Info ${f.label}`}
+                        aria-label={`Info ${SCORE_LABELS[f.key]}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           setOpenInfo(openInfo === f.key ? null : f.key);
@@ -473,14 +574,14 @@ export default function Home() {
                           onClick={(e) => e.stopPropagation()}
                           className="absolute left-0 top-full z-10 mt-1.5 block w-64 max-w-[75vw] rounded-lg bg-white p-2.5 text-xs leading-relaxed text-neutral-600 shadow-lg ring-1 ring-[#dde5cd]"
                         >
-                          {f.info}
+                          {SCORE_INFO[f.key]}
                         </span>
                       ) : null}
                     </span>
                     <input
                       type="number"
                       min={0}
-                      max={f.att ? ATTENDANCE_TOTAL : 100}
+                      max={att ? ATTENDANCE_TOTAL : 100}
                       className="inp text-center"
                       value={report.scores[f.key]}
                       onChange={(e) => setScore(f.key, e.target.value)}
@@ -504,6 +605,56 @@ export default function Home() {
               />
             </Field>
           </Card>
+
+          {(template.extraBlocks ?? []).map((b) => (
+            <Card key={b.id} title={b.title}>
+              <p className="mb-3 text-xs leading-relaxed text-neutral-500">
+                Label kolom bebas diubah (mis. <b>BUNPOU 10-12</b>). Nilainya
+                tampil sebagai angka mentah di kartu, bukan huruf, dan ikut
+                menentukan Final Score.
+              </p>
+              <div className="space-y-2">
+                {(extras[b.id] ?? []).map((cell, i) => (
+                  <div
+                    key={i}
+                    className="grid grid-cols-[minmax(0,1fr)_5rem_1.5rem] items-center gap-2"
+                  >
+                    <input
+                      className="inp"
+                      value={cell.label}
+                      onChange={(e) =>
+                        setCell(b.id, i, { label: e.target.value })
+                      }
+                      placeholder="Label kolom"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      className="inp text-center"
+                      value={cell.score}
+                      onChange={(e) =>
+                        setCell(b.id, i, { score: e.target.value })
+                      }
+                    />
+                    <button
+                      onClick={() => removeCell(b.id, i)}
+                      className="text-neutral-400 hover:text-red-500"
+                      title="Hapus kolom"
+                    >
+                      {"✕"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => addCell(b.id)}
+                className="mt-2 text-sm font-medium text-leafdark hover:underline"
+              >
+                + Tambah kolom
+              </button>
+            </Card>
+          ))}
 
           <Card title="Catatan (Notes)">
             <textarea
@@ -572,11 +723,23 @@ export default function Home() {
               </div>
 
               <div className="mt-4">
-                <div className="mb-2 text-sm font-semibold text-neutral-700">
-                  Skala nilai
+                <div className="mb-1 flex items-center justify-between">
+                  <div className="text-sm font-semibold text-neutral-700">
+                    Skala nilai
+                  </div>
+                  <button
+                    onClick={resetBands}
+                    className="text-xs text-neutral-400 hover:text-leafdark"
+                  >
+                    kembalikan bawaan
+                  </button>
                 </div>
+                <p className="mb-2 text-xs text-neutral-500">
+                  Berlaku untuk template <b>{template.name}</b> saja. Template
+                  lain punya skalanya sendiri.
+                </p>
                 <div className="space-y-2">
-                  {brand.bands.map((band, i) => (
+                  {bands.map((band, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <span className="text-xs text-neutral-500 w-10">min</span>
                       <input type="number" className="inp w-20"

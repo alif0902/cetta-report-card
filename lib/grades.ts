@@ -26,15 +26,27 @@ export function scoreToGrade(score: number | null, bands: Band[]): string {
 }
 
 // Attendance: input = jumlah pertemuan hadir dari total 12.
-// 12=A+, 11=A, 10=A-, 9=B+, 8=B, 7=B-, <=6=C
+// Tiap pertemuan yang terlewat turun satu tingkat pada skala nilai template.
+// Skala default (A+..C): 12=A+, 11=A, 10=A-, 9=B+, 8=B, 7=B-, <=6=C
 export const ATTENDANCE_TOTAL = 12;
-const ATTENDANCE_LADDER = ["A+", "A", "A-", "B+", "B", "B-"];
 
-export function attendanceGrade(attended: number | null): string {
+/** Tangga grade kehadiran: semua grade dari tertinggi, kecuali grade terendah. */
+function attendanceLadder(bands: Band[]): string[] {
+  const sorted = [...bands].sort((a, b) => b.min - a.min).map((b) => b.grade);
+  return sorted.length > 1 ? sorted.slice(0, -1) : sorted;
+}
+
+export function attendanceGrade(
+  attended: number | null,
+  bands: Band[] = DEFAULT_BANDS
+): string {
   if (attended === null) return "";
+  const ladder = attendanceLadder(bands);
+  const lowest =
+    [...bands].sort((a, b) => a.min - b.min)[0]?.grade ?? "";
   const capped = Math.min(Math.max(attended, 0), ATTENDANCE_TOTAL);
   const missed = ATTENDANCE_TOTAL - capped;
-  return missed < ATTENDANCE_LADDER.length ? ATTENDANCE_LADDER[missed] : "C";
+  return missed < ladder.length ? ladder[missed] : lowest;
 }
 
 // Konversi kehadiran ke skala 0-100 agar ikut rata-rata final score.
