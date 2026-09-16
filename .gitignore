@@ -15,3 +15,6 @@ vectorize-tool.html
 report-card-template.html
 rate-card-cetta.html
 preview-templates.html
+
+# artefak build TypeScript
+tsconfig.tsbuildinfo

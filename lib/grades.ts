@@ -25,10 +25,26 @@ export function scoreToGrade(score: number | null, bands: Band[]): string {
   return sorted.length ? sorted[sorted.length - 1].grade : "";
 }
 
-// Attendance: input = jumlah pertemuan hadir dari total 12.
+// Attendance: input = jumlah pertemuan hadir dari total pertemuan sekelas.
 // Tiap pertemuan yang terlewat turun satu tingkat pada skala nilai template.
-// Skala default (A+..C): 12=A+, 11=A, 10=A-, 9=B+, 8=B, 7=B-, <=6=C
-export const ATTENDANCE_TOTAL = 12;
+// Total 12 (A..C): 12=A, 11=A-, 10=B+, 9=B, 8=B-, <=7=C
+// Total  8 (A..C):  8=A,  7=A-,  6=B+, 5=B, 4=B-, <=3=C
+export const ATTENDANCE_TOTAL_OPTIONS = [8, 12] as const;
+export const DEFAULT_ATTENDANCE_TOTAL = 12;
+
+/**
+ * Jumlah pertemuan yang berlaku, diambil dari pengaturan brand.
+ * Data lama di localStorage belum punya field ini, dan isinya bisa saja
+ * angka asing — keduanya jatuh ke total bawaan.
+ */
+export function attendanceTotalOf(brand: {
+  attendanceTotal?: number;
+}): number {
+  const n = brand?.attendanceTotal;
+  return ATTENDANCE_TOTAL_OPTIONS.some((o) => o === n)
+    ? (n as number)
+    : DEFAULT_ATTENDANCE_TOTAL;
+}
 
 /** Tangga grade kehadiran: semua grade dari tertinggi, kecuali grade terendah. */
 function attendanceLadder(bands: Band[]): string[] {
@@ -38,22 +54,27 @@ function attendanceLadder(bands: Band[]): string[] {
 
 export function attendanceGrade(
   attended: number | null,
-  bands: Band[] = DEFAULT_BANDS
+  bands: Band[] = DEFAULT_BANDS,
+  total: number = DEFAULT_ATTENDANCE_TOTAL
 ): string {
   if (attended === null) return "";
   const ladder = attendanceLadder(bands);
   const lowest =
     [...bands].sort((a, b) => a.min - b.min)[0]?.grade ?? "";
-  const capped = Math.min(Math.max(attended, 0), ATTENDANCE_TOTAL);
-  const missed = ATTENDANCE_TOTAL - capped;
+  const capped = Math.min(Math.max(attended, 0), total);
+  const missed = total - capped;
   return missed < ladder.length ? ladder[missed] : lowest;
 }
 
 // Konversi kehadiran ke skala 0-100 agar ikut rata-rata final score.
-export function attendancePercent(attended: number | null): number | null {
+export function attendancePercent(
+  attended: number | null,
+  total: number = DEFAULT_ATTENDANCE_TOTAL
+): number | null {
   if (attended === null) return null;
-  const capped = Math.min(Math.max(attended, 0), ATTENDANCE_TOTAL);
-  return (capped / ATTENDANCE_TOTAL) * 100;
+  if (total <= 0) return null;
+  const capped = Math.min(Math.max(attended, 0), total);
+  return (capped / total) * 100;
 }
 
 export function finalGrade(

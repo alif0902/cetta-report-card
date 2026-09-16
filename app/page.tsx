@@ -5,8 +5,10 @@ import ReportCard from "@/components/ReportCard";
 import Seigaiha from "@/components/Seigaiha";
 import { Band, Brand, ExtraCell, ReportData, ScoreKey } from "@/lib/types";
 import {
-  ATTENDANCE_TOTAL,
+  ATTENDANCE_TOTAL_OPTIONS,
   attendanceGrade,
+  attendanceTotalOf,
+  DEFAULT_ATTENDANCE_TOTAL,
   DEFAULT_BANDS,
   parseScore,
   scoreToGrade,
@@ -50,6 +52,7 @@ const DEFAULT_BRAND: Brand = {
   cooSig: sigMonica.src,
   defaultLevel: "Chuukyuu\uff08\u3000\u4e2d\u7d1a\u3000\uff09",
   defaultTutor: "Muhammad Alif Hamka",
+  attendanceTotal: DEFAULT_ATTENDANCE_TOTAL,
   bands: DEFAULT_BANDS,
 };
 
@@ -67,8 +70,10 @@ const SCORE_LABELS: Record<ScoreKey, string> = {
   pronunciation: "Pronunciation \u767a\u97f3",
 };
 
-const SCORE_INFO: Record<ScoreKey, string> = {
-  attendance: `Diisi jumlah pertemuan yang dihadiri murid dari total ${ATTENDANCE_TOTAL}. Tiap pertemuan yang terlewat menurunkan satu tingkat pada skala nilai template ini.`,
+// Teks bantuan tiap kategori. Attendance ikut jumlah pertemuan yang dipilih
+// di pengaturan template, jadi dibuat sebagai fungsi.
+const scoreInfoFor = (attendanceTotal: number): Record<ScoreKey, string> => ({
+  attendance: `Diisi jumlah pertemuan yang dihadiri murid dari total ${attendanceTotal}. Tiap pertemuan yang terlewat menurunkan satu tingkat pada skala nilai template ini. Jumlah pertemuan diatur di Pengaturan template.`,
   participation:
     "Keaktifan murid di kelas, 0-100 (penilaian subjektif tutor). Di kartu tampil sebagai grade.",
   grammar: "Pemahaman tata bahasa, 0-100. Di kartu tampil sebagai grade.",
@@ -81,7 +86,7 @@ const SCORE_INFO: Record<ScoreKey, string> = {
     "Penguasaan kosakata, 0-100. Khusus kelas Kaiwa. Di kartu tampil sebagai grade.",
   pronunciation:
     "Pelafalan, 0-100. Khusus kelas Kaiwa. Di kartu tampil sebagai grade.",
-};
+});
 
 const emptyReport = (templateId = DEFAULT_TEMPLATE_ID): ReportData => ({
   templateId,
@@ -110,6 +115,9 @@ export default function Home() {
   const template = getTemplate(report?.templateId);
   const bands = bandsFor(brand, template.id);
   const extras = extrasFor(report?.extras, template.id);
+  // jumlah pertemuan berlaku global: semua template, semua murid
+  const attendanceTotal = attendanceTotalOf(brand);
+  const SCORE_INFO = scoreInfoFor(attendanceTotal);
 
   // tutup popover info saat klik di luar
   useEffect(() => {
@@ -208,6 +216,19 @@ export default function Home() {
 
   const setScore = (k: ScoreKey, v: string) =>
     setReport((r) => ({ ...r, scores: { ...r.scores, [k]: v } }));
+
+  // Ganti jumlah pertemuan. Kehadiran yang melebihi total baru ikut dipangkas
+  // supaya tidak ada "hadir 12 dari 8" yang tersimpan.
+  const setAttendanceTotal = (n: number) => {
+    setBrand((b) => ({ ...b, attendanceTotal: n }));
+    setStudents((list) =>
+      list.map((s) => {
+        const cur = parseScore(s.scores.attendance);
+        if (cur === null || cur <= n) return s;
+        return { ...s, scores: { ...s.scores, attendance: String(n) } };
+      })
+    );
+  };
 
   // --- blok Final Test ---
   const setBlock = (blockId: string, fn: (cells: ExtraCell[]) => ExtraCell[]) =>
@@ -380,7 +401,7 @@ export default function Home() {
               Report Card Generator
             </h1>
             <p className="text-sm text-neutral-500">
-              {"Cetta Japanese \u2014 isi nilai, langsung jadi kartu."}
+              {"Cetta Japanese \u2014 isi nilai, langsung jadi report card."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -489,9 +510,6 @@ export default function Home() {
                 ))}
               </select>
             </Field>
-            <p className="-mt-1 text-xs leading-relaxed text-neutral-500">
-              {template.description}
-            </p>
           </Card>
 
           <Card title="Data murid">
@@ -541,7 +559,7 @@ export default function Home() {
                 const att = f.key === "attendance";
                 const n = parseScore(report.scores[f.key]);
                 const preview = att
-                  ? attendanceGrade(n, bands) || "\u2014"
+                  ? attendanceGrade(n, bands, attendanceTotal) || "\u2014"
                   : f.raw
                   ? n === null
                     ? "\u2014"
@@ -554,6 +572,12 @@ export default function Home() {
                   >
                     <span className="relative text-sm text-neutral-700">
                       {SCORE_LABELS[f.key]}
+                      {att ? (
+                        <span className="text-neutral-400">
+                          {" · dari "}
+                          {attendanceTotal}
+                        </span>
+                      ) : null}
                       <button
                         type="button"
                         aria-label={`Info ${SCORE_LABELS[f.key]}`}
@@ -581,7 +605,7 @@ export default function Home() {
                     <input
                       type="number"
                       min={0}
-                      max={att ? ATTENDANCE_TOTAL : 100}
+                      max={att ? attendanceTotal : 100}
                       className="inp text-center"
                       value={report.scores[f.key]}
                       onChange={(e) => setScore(f.key, e.target.value)}
@@ -678,12 +702,12 @@ export default function Home() {
               onClick={() => setShowSettings((s) => !s)}
               className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100"
             >
-              {showSettings ? "Tutup pengaturan" : "Pengaturan brand"}
+              {showSettings ? "Tutup pengaturan" : "Pengaturan template"}
             </button>
           </div>
 
           {showSettings && (
-            <Card title="Pengaturan brand (disimpan otomatis)">
+            <Card title="Pengaturan template (disimpan otomatis)">
               <p className="mb-3 text-xs text-neutral-500">
                 Diisi sekali, dipakai untuk semua murid. Tersimpan di browser ini.
               </p>
@@ -720,6 +744,32 @@ export default function Home() {
                   <input className="inp" value={brand.defaultTutor}
                     onChange={(e)=>setBrand((b)=>({...b, defaultTutor:e.target.value}))}/>
                 </Field>
+              </div>
+
+              <div className="mt-4">
+                <div className="mb-1 text-sm font-semibold text-neutral-700">
+                  Jumlah pertemuan
+                </div>
+                <p className="mb-2 text-xs leading-relaxed text-neutral-500">
+                  <b>8</b> untuk kelas private, <b>12</b> untuk reguler.
+                </p>
+                <div className="flex gap-2">
+                  {ATTENDANCE_TOTAL_OPTIONS.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setAttendanceTotal(n)}
+                      aria-pressed={attendanceTotal === n}
+                      className={`rounded-lg border px-4 py-2 text-sm font-semibold ${
+                        attendanceTotal === n
+                          ? "border-leaf bg-leafsoft text-leafdark"
+                          : "border-neutral-300 text-neutral-600 hover:bg-neutral-100"
+                      }`}
+                    >
+                      {n} pertemuan
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="mt-4">

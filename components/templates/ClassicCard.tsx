@@ -14,6 +14,7 @@ import { ExtraBlockDef } from "@/lib/templates";
 import {
   attendanceGrade,
   attendancePercent,
+  attendanceTotalOf,
   finalGrade,
   legendRows,
   parseScore,
@@ -61,9 +62,11 @@ const ClassicCard = forwardRef<HTMLDivElement, ClassicCardProps>(
       data.level.trim() || levelFallback || brand.defaultLevel;
     const tutor = data.tutor.trim() || brand.defaultTutor;
 
+    const attendanceTotal = attendanceTotalOf(brand);
+
     const nums = rows.map((r) =>
       r.key === "attendance"
-        ? attendancePercent(parseScore(data.scores[r.key]))
+        ? attendancePercent(parseScore(data.scores[r.key]), attendanceTotal)
         : parseScore(data.scores[r.key])
     );
     // nilai di blok Final Test ikut menentukan Final Score
@@ -215,7 +218,7 @@ const ClassicCard = forwardRef<HTMLDivElement, ClassicCardProps>(
               const n = parseScore(data.scores[r.key]);
               const shown =
                 r.key === "attendance"
-                  ? attendanceGrade(n, bands)
+                  ? attendanceGrade(n, bands, attendanceTotal)
                   : r.raw
                   ? n === null
                     ? ""

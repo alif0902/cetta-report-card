@@ -42,6 +42,12 @@ export type Brand = {
   cooSig: string | null;
   defaultLevel: string;
   defaultTutor: string;
+  /**
+   * Jumlah pertemuan satu periode kelas (8 untuk private, 12 untuk reguler).
+   * Berlaku untuk semua template & semua murid. Opsional karena data lama
+   * di localStorage belum menyimpannya — baca lewat attendanceTotalOf().
+   */
+  attendanceTotal?: number;
   /** Skala nilai lama; dipakai sebagai skala template default. */
   bands: Band[];
   /** Skala nilai per template; menimpa skala bawaan template bila ada. */
